@@ -24,12 +24,21 @@ func parseName(line string) string {
 	return line
 }
 
+func parsePrint(line string) string {
+	return line
+}
+
 func parseVariable(line string) data.Variable {
 	parts := strings.Split(line, " ")
+	if len(parts) != 3 {
+		panic("invalid variable format " + line)
+	}
 	name := parts[0]
 	val := parts[1]
+	tp := parts[2]
 	return data.Variable{
-		Name:  name,
-		Value: val,
+		Name:     name,
+		Property: val,
+		Type:     tp,
 	}
 }

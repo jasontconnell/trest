@@ -2,13 +2,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
+	"time"
 
 	"github.com/jasontconnell/trest/process"
 )
 
 func main() {
+	start := time.Now()
 	tfile := flag.String("tfile", "tests.trst", "tests file")
 	flag.Parse()
 
@@ -16,10 +17,14 @@ func main() {
 		log.Fatal("no file")
 	}
 
-	tconfig, err := process.ReadTests(*tfile)
+	root, err := process.ReadTests(*tfile)
 	if err != nil {
 		log.Fatal("reading tests", err)
 	}
 
-	fmt.Println(tconfig)
+	err = process.Run(root, root)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("finished.", time.Since(start))
 }

@@ -9,4 +9,7 @@ const (
 	Each      Directive = "Each"
 	Var       Directive = "Var"
 	Url       Directive = "Url"
+	RootUrl   Directive = "RootUrl"
+	Headers   Directive = "Headers"
+	Print     Directive = "Print"
 )

@@ -9,16 +9,21 @@ type Group struct {
 	Name      string
 	Method    string
 	Request   Request
+	RootUrl   string
 	Groups    []*Group
-	Variables []Variable
+	Variables []*Variable
+	Headers   []Variable
 	Parent    *Group
 	Repeat    bool
 	Depth     int
+	Print     string
+	Response  RawResponse
+	Responses []Response
 }
 
 func (g Group) String() string {
 	space := strings.Repeat(" ", g.Depth)
-	s := fmt.Sprintf("%[3]sName: %s\n%[3]sMethod: %s\n%[3]sRequest: %v\n", g.Name, g.Method, g.Request, space)
+	s := fmt.Sprintf("%[4]sName: %[1]s\n%[4]sMethod: %[2]s\n%[4]sRequest: %[3]v\n", g.Name, g.Method, g.Request, space)
 	if g.Repeat {
 		s += space + fmt.Sprintf("Repeats\n")
 	}
@@ -30,19 +35,21 @@ func (g Group) String() string {
 }
 
 type Variable struct {
-	Name  string
-	Value string
+	Name     string
+	Property string
+	Type     string
 }
 
 func (v Variable) String() string {
-	return fmt.Sprintf("Name: %s Value: %s", v.Name, v.Value)
+	return fmt.Sprintf("Name: %s Value: %s Type: %s", v.Name, v.Property, v.Type)
 }
 
 type Request struct {
-	Url  string
-	Body string
+	Method string
+	Url    string
+	Body   string
 }
 
 func (req Request) String() string {
-	return fmt.Sprintf("Url: %s Body: %s", req.Url, req.Body)
+	return fmt.Sprintf("Method: %s Url: %s Body: %s", req.Method, req.Url, req.Body)
 }

@@ -3,7 +3,6 @@ package process
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -24,7 +23,6 @@ func ReadTests(filename string) (*data.Group, error) {
 		lines = append(lines, scn.Text())
 	}
 
-	log.Println(len(lines))
 	g, err := parseFile(lines)
 	return g, nil
 }
@@ -38,6 +36,7 @@ func parseFile(lines []string) (*data.Group, error) {
 	depth := 0
 
 	cur := g
+	headers := false
 
 	for _, line := range lines {
 		m := spaces.FindStringSubmatch(line)
@@ -59,16 +58,18 @@ func parseFile(lines []string) (*data.Group, error) {
 		rest := strings.Join(kw[1:], " ")
 
 		switch dir {
+		case data.RootUrl:
+			cur.RootUrl = rest
 		case data.Method:
 			cur.Method = parseMethod(rest)
-			log.Println("parse method", cur.Method)
 		case data.Url:
 			cur.Request = parseUrl(rest)
-			log.Println("parse request", cur.Request)
+		case data.Print:
+			cur.Print = parsePrint(rest)
 		case data.Test, data.Each:
 			repeat := dir == data.Each
 			var n *data.Group
-			if cur.Depth == depth {
+			if cur.Depth == depth && cur.Parent != nil {
 				cur = cur.Parent
 			}
 
@@ -77,17 +78,26 @@ func parseFile(lines []string) (*data.Group, error) {
 				Repeat: repeat,
 				Depth:  depth,
 			}
-			log.Println("parse", dir, n.Name)
-
 			cur.Groups = append(cur.Groups, n)
 			n.Parent = cur
 			cur = n
+			headers = false
+		case data.Headers:
+			headers = true
 		case data.Var:
 			v := parseVariable(rest)
-			cur.Variables = append(cur.Variables, v)
-			log.Println("parse variable", v)
+			if !headers {
+				cur.Variables = append(cur.Variables, &v)
+			} else {
+				cur.Headers = append(cur.Headers, v)
+			}
 		}
 	}
 
-	return g, nil
+	var root *data.Group
+	if len(g.Groups) == 1 {
+		root = g.Groups[0]
+	}
+
+	return root, nil
 }
