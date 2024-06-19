@@ -58,25 +58,22 @@ func parseFile(lines []string) (*data.Group, error) {
 		rest := strings.Join(kw[1:], " ")
 
 		switch dir {
-		case data.RootUrl:
-			cur.RootUrl = rest
 		case data.Method:
 			cur.Method = parseMethod(rest)
 		case data.Url:
 			cur.Request = parseUrl(rest)
 		case data.Print:
 			cur.Print = parsePrint(rest)
-		case data.Test, data.Each:
-			repeat := dir == data.Each
+		case data.Test:
 			var n *data.Group
 			if cur.Depth == depth && cur.Parent != nil {
 				cur = cur.Parent
 			}
 
 			n = &data.Group{
-				Name:   parseName(rest),
-				Repeat: repeat,
-				Depth:  depth,
+				Name:        parseName(rest),
+				RootElement: parseElement(rest),
+				Depth:       depth,
 			}
 			cur.Groups = append(cur.Groups, n)
 			n.Parent = cur
@@ -84,6 +81,8 @@ func parseFile(lines []string) (*data.Group, error) {
 			headers = false
 		case data.Headers:
 			headers = true
+		case data.Variables:
+			headers = false
 		case data.Var:
 			v := parseVariable(rest)
 			if !headers {

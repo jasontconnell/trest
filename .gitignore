@@ -1,3 +1,4 @@
 *.exe
 *.ps1
 *.trst
+out.txt

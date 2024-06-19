@@ -1,0 +1,12 @@
+Test main
+ Method POST
+ Headers
+  Var Content-Type application/json string
+
+ Test media
+  Url /-/mediacontent/list { "tags": ["gopher"], "articles": true, "videos": true, "galleries": false, "pageIndex": 0, "pageSize": 20 }
+  Var id id string
+  Var alt image.altText string 
+  Var type mediaType string
+  Print $id $alt $type
+  

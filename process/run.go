@@ -2,66 +2,62 @@ package process
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jasontconnell/trest/data"
 )
 
 var varreg *regexp.Regexp = regexp.MustCompile("[$]([a-zA-Z0-9]+)")
 
-func Run(g *data.Group, root *data.Group) error {
-	var errlist error
-	if g.Parent != nil && g.Parent.Responses != nil {
-		for _, res := range g.Parent.Responses {
-			requrl, err := getUrl(g, root, res)
-			if err != nil {
-				errlist = errors.Join(errlist, fmt.Errorf("can't get url %s. %w", g.Request.Url, err))
-				continue
-			}
-
-			resp, err := getResponse(g, requrl, getMethod(g, root), g.Request.Body, getHeaders(g, root), res)
-			if err != nil {
-				errlist = errors.Join(errlist, fmt.Errorf("getting response from %s. %w", requrl, err))
-				continue
-			}
-			g.Response = resp
-		}
-	} else if g.Request.Url != "" {
-		requrl, err := getUrl(g, root, nil)
-		if err != nil {
-			errlist = errors.Join(errlist, fmt.Errorf("can't get url %s. %w", g.Request.Url, err))
-		}
-
-		resp, err := getResponse(g, requrl, getMethod(g, root), g.Request.Body, getHeaders(g, root), nil)
-		if err != nil {
-			errlist = errors.Join(errlist, fmt.Errorf("getting response from %s. %w", requrl, err))
-		}
-		g.Response = resp
-	}
-
-	if g.Repeat && g.Parent != nil {
-		responses := data.GetResponseValues(g.Parent.Response, g.Name, g.Variables)
-		g.Responses = responses
-	}
-
-	if g.Groups != nil {
-		for _, gg := range g.Groups {
-			err := Run(gg, root)
-			if err != nil {
-				errlist = errors.Join(errlist, fmt.Errorf("running %s. %w", gg.Name, err))
-			}
-		}
-	}
-	return errlist
+func Run(g *data.Group) []data.Result {
+	first := g.Groups[0]
+	results := runGroup(first, g, nil)
+	return results
 }
 
-func getResponse(s *data.Group, requrl, method, body string, headers []data.Variable, res data.Response) (data.RawResponse, error) {
+func runGroup(g *data.Group, root *data.Group, res data.Response) []data.Result {
+	var results []data.Result
+	if g.Request.Url != "" {
+		requrl, err := getUrl(g, root, res)
+		method := getMethod(g, root)
+
+		if err != nil {
+			log.Fatal(fmt.Errorf("can't get url %s. %w", g.Request.Url, err))
+		}
+
+		resp, result := getResponse(g, requrl, method, g.Request.Body, getHeaders(g, root), res)
+		results = append(results, result)
+		g.Responses = data.GetResponseValues(resp, g.RootElement, g.Variables, res)
+	}
+
+	var wg sync.WaitGroup
+
+	for _, c := range g.Groups {
+		wg.Add(len(g.Responses))
+		for _, r := range g.Responses {
+			go func(g1 *data.Group, r1 data.Response) {
+				rsub := runGroup(g1, root, r1)
+				results = append(results, rsub...)
+				wg.Done()
+			}(c, r)
+		}
+	}
+
+	wg.Wait()
+
+	return results
+}
+
+func getResponse(s *data.Group, requrl, method, body string, headers []data.Variable, res data.Response) (data.RawResponse, data.Result) {
+	result := data.Result{}
+
 	m := make(map[string]string)
 	for k, v := range res {
 		m[k] = v
@@ -77,40 +73,44 @@ func getResponse(s *data.Group, requrl, method, body string, headers []data.Vari
 		body = strings.Replace(body, "$"+k, v, -1)
 	}
 
-	requrl = replaceVariables(s, res, requrl)
-	body = replaceVariables(s, res, body)
+	requrl = applyResponseValues(s, res, requrl)
+	body = applyResponseValues(s, res, body)
 
 	log.Println(requrl, body)
 
 	buf := bytes.NewBufferString(body)
 	r, err := http.NewRequest(method, requrl, buf)
 	if err != nil {
-		return data.DefaultResponse, fmt.Errorf("couldn't build request. %s %s %s %w", requrl, method, body, err)
+		result.Err = fmt.Errorf("couldn't build request. %s %s %s %w", requrl, method, body, err)
+		return data.DefaultResponse, result
 	}
 
 	for k, v := range h {
 		r.Header.Add(k, v)
 	}
 
+	start := time.Now()
 	resp, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return data.DefaultResponse, fmt.Errorf("failure in request. %s %s %s %w", requrl, method, body, err)
+		result.Err = fmt.Errorf("failure in request. %s %s %s %w", requrl, method, body, err)
+		return data.DefaultResponse, result
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return data.DefaultResponse, fmt.Errorf("not 200 status. %s %s %s", requrl, method, body)
-	}
+	result.Status = resp.StatusCode
+	result.Body = body
+	result.Url = requrl
 
 	dresp, err := data.ParseResponse(resp, res)
 	if err != nil {
-		return dresp, fmt.Errorf("parsing response. %s %s %s %w", requrl, method, body, err)
+		result.Err = fmt.Errorf("parsing response. %s %s %s %w", requrl, method, body, err)
 	}
+	result.Duration = time.Since(start)
 
-	return dresp, err
+	return dresp, result
 }
 
-func replaceVariables(s *data.Group, res data.Response, val string) string {
+func applyResponseValues(s *data.Group, res data.Response, val string) string {
 	left := varreg.FindAllStringSubmatch(val, -1)
 	if len(left) > 0 {
 		for _, mg := range left {

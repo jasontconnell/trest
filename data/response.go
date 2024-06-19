@@ -24,26 +24,21 @@ func ParseResponse(resp *http.Response, presp Response) (RawResponse, error) {
 	return RawResponse{Data: raw, RequestData: presp}, err
 }
 
-func GetResponseValues(resp RawResponse, root string, vars []*Variable) []Response {
+func GetResponseValues(resp RawResponse, root string, vars []*Variable, res Response) []Response {
 	var list []Response
-	fmt.Println(len(resp.Data))
 	for k, v := range resp.Data {
-		fmt.Println(k, root)
-		fmt.Printf("%T\n", v)
 		if k != root {
 			continue
 		}
 		switch val := v.(type) {
 		case []interface{}:
-			list = extractArray(val, vars)
-		default:
-			log.Printf("unhandled %T\n", val)
+			list = extractArray(val, vars, res)
 		}
 	}
 	return list
 }
 
-func extractArray(ary []interface{}, vars []*Variable) []Response {
+func extractArray(ary []interface{}, vars []*Variable, res Response) []Response {
 	resp := []Response{}
 	for _, obj := range ary {
 		switch val := obj.(type) {
@@ -52,29 +47,38 @@ func extractArray(ary []interface{}, vars []*Variable) []Response {
 			for _, v := range vars {
 				r[v.Name] = extractValue(val, v.Property)
 			}
+			mergeResponses(r, res)
 			resp = append(resp, r)
 		case float64:
 			r := Response{}
-			log.Println(val)
 			for _, v := range vars {
-				if v.Name == "@index" {
+				if v.Property == "@index" {
 					r[v.Name] = fmt.Sprintf("%d", int(val))
 				}
 			}
+			mergeResponses(r, res)
 			resp = append(resp, r)
 		case int:
 			r := Response{}
 			for _, v := range vars {
-				if v.Name == "@index" {
+				if v.Property == "@index" {
 					r[v.Name] = fmt.Sprintf("%d", val)
 				}
 			}
+			mergeResponses(r, res)
 			resp = append(resp, r)
 		default:
 			log.Printf("unsupported type %T\n", val)
 		}
 	}
+
 	return resp
+}
+
+func mergeResponses(r Response, res Response) {
+	for k, v := range res {
+		r[k] = v
+	}
 }
 
 func extractValue(m map[string]interface{}, prop string) string {

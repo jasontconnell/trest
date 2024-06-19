@@ -21,7 +21,16 @@ func parseUrl(line string) data.Request {
 }
 
 func parseName(line string) string {
-	return line
+	parts := strings.Fields(line)
+	return parts[0]
+}
+
+func parseElement(line string) string {
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[1]
 }
 
 func parsePrint(line string) string {
