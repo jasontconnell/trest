@@ -7,12 +7,13 @@ import (
 )
 
 type Result struct {
-	Url      string
-	Body     string
-	Duration time.Duration
-	Status   int
-	Err      error
-	Message  string
+	Url         string
+	Body        string
+	Duration    time.Duration
+	Status      int
+	Err         error
+	ErrResponse string
+	Message     string
 }
 
 type Group struct {

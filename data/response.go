@@ -3,8 +3,8 @@ package data
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"net/http"
 	"strings"
 )
 
@@ -17,9 +17,9 @@ type Response map[string]string
 
 var DefaultResponse RawResponse = RawResponse{}
 
-func ParseResponse(resp *http.Response, presp Response) (RawResponse, error) {
+func ParseResponse(reader io.Reader, presp Response) (RawResponse, error) {
 	var raw map[string]interface{}
-	dec := json.NewDecoder(resp.Body)
+	dec := json.NewDecoder(reader)
 	err := dec.Decode(&raw)
 	return RawResponse{Data: raw, RequestData: presp}, err
 }

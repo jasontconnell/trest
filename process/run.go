@@ -3,6 +3,7 @@ package process
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -38,7 +39,6 @@ func runGroup(g *data.Group, root *data.Group, res data.Response) []data.Result 
 	}
 
 	var wg sync.WaitGroup
-
 	for _, c := range g.Groups {
 		wg.Add(len(g.Responses))
 		for _, r := range g.Responses {
@@ -97,13 +97,21 @@ func getResponse(s *data.Group, requrl, method, body string, headers []data.Vari
 	}
 	defer resp.Body.Close()
 
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		result.Err = fmt.Errorf("failure reading body. %s %s %s %w", requrl, method, body, err)
+	}
+
+	resbuf := bytes.NewBuffer(content)
+
 	result.Status = resp.StatusCode
 	result.Body = body
 	result.Url = requrl
 
-	dresp, err := data.ParseResponse(resp, res)
+	dresp, err := data.ParseResponse(resbuf, res)
 	if err != nil {
 		result.Err = fmt.Errorf("parsing response. %s %s %s %w", requrl, method, body, err)
+		result.ErrResponse = string(content)
 	}
 	result.Duration = time.Since(start)
 

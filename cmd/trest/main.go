@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jasontconnell/trest/data"
 	"github.com/jasontconnell/trest/process"
 )
 
@@ -16,6 +17,7 @@ func main() {
 	tfile := flag.String("tfile", "tests.trst", "tests file")
 	rootUrl := flag.String("url", "", "root url")
 	outfile := flag.String("out", "out.txt", "output file")
+	errorsfile := flag.String("errors", "errors.txt", "errors file")
 	flag.Parse()
 
 	if *tfile == "" || *rootUrl == "" {
@@ -24,7 +26,7 @@ func main() {
 	}
 
 	root, err := process.ReadTests(*tfile)
-	if err != nil {
+	if err != nil || root == nil {
 		log.Fatal("reading tests", err)
 	}
 
@@ -35,18 +37,40 @@ func main() {
 		return results[i].Duration < results[j].Duration
 	})
 
-	fout, err := os.OpenFile(*outfile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	werr := writeResults(*outfile, results, func(r data.Result) bool {
+		return r.Err == nil && r.Status == 200
+	})
+
+	eerr := writeResults(*errorsfile, results, func(r data.Result) bool {
+		return r.Err != nil || r.Status != 200
+	})
+
+	if werr != nil || eerr != nil {
+		log.Println("problem writing file", werr, eerr)
+	}
+
+	log.Println("finished.", time.Since(start))
+}
+
+func writeResults(filename string, results []data.Result, filter func(r data.Result) bool) error {
+	fout, err := os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	if err != nil {
-		log.Fatal("can't open output file ", *outfile)
+		return fmt.Errorf("can't open output file %s. %w", filename, err)
 	}
 	defer fout.Close()
 
 	for _, r := range results {
+		if !filter(r) {
+			continue
+		}
+
 		fmt.Fprintln(fout, r.Url, r.Body)
 		fmt.Fprintf(fout, " Duration: %v\n", r.Duration)
 		fmt.Fprintf(fout, " Status Code: %d\n", r.Status)
-		fmt.Fprintf(fout, " Error: %v\n", r.Err)
+		if r.Err != nil {
+			fmt.Fprintf(fout, " Error: %v\n", r.Err)
+			fmt.Fprintf(fout, " Error Response \n%v\n\n", r.ErrResponse)
+		}
 	}
-
-	log.Println("finished.", time.Since(start))
+	return nil
 }
