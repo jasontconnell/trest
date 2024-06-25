@@ -13,6 +13,7 @@ type Result struct {
 	Status      int
 	Err         error
 	ErrResponse string
+	HasElement  bool
 	Message     string
 }
 

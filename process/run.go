@@ -34,8 +34,8 @@ func runGroup(g *data.Group, root *data.Group, res data.Response) []data.Result 
 		}
 
 		resp, result := getResponse(g, requrl, method, g.Request.Body, getHeaders(g, root), res)
+		g.Responses, result.HasElement = data.GetResponseValues(resp, g.RootElement, g.Variables, res)
 		results = append(results, result)
-		g.Responses = data.GetResponseValues(resp, g.RootElement, g.Variables, res)
 	}
 
 	var wg sync.WaitGroup
@@ -49,7 +49,6 @@ func runGroup(g *data.Group, root *data.Group, res data.Response) []data.Result 
 			}(c, r)
 		}
 	}
-
 	wg.Wait()
 
 	return results

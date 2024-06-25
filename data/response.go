@@ -24,18 +24,22 @@ func ParseResponse(reader io.Reader, presp Response) (RawResponse, error) {
 	return RawResponse{Data: raw, RequestData: presp}, err
 }
 
-func GetResponseValues(resp RawResponse, root string, vars []*Variable, res Response) []Response {
+func GetResponseValues(resp RawResponse, root string, vars []*Variable, res Response) ([]Response, bool) {
 	var list []Response
+	var elementFound bool
 	for k, v := range resp.Data {
 		if k != root {
 			continue
 		}
-		switch val := v.(type) {
-		case []interface{}:
-			list = extractArray(val, vars, res)
+		if len(vars) > 0 {
+			switch val := v.(type) {
+			case []interface{}:
+				list = extractArray(val, vars, res)
+			}
 		}
+		elementFound = true
 	}
-	return list
+	return list, elementFound
 }
 
 func extractArray(ary []interface{}, vars []*Variable, res Response) []Response {

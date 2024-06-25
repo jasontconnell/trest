@@ -38,18 +38,18 @@ func main() {
 	})
 
 	werr := writeResults(*outfile, results, func(r data.Result) bool {
-		return r.Err == nil && r.Status == 200
+		return r.Err == nil && r.Status == 200 && r.HasElement
 	})
 
 	eerr := writeResults(*errorsfile, results, func(r data.Result) bool {
-		return r.Err != nil || r.Status != 200
+		return r.Err != nil || r.Status != 200 || !r.HasElement
 	})
 
 	if werr != nil || eerr != nil {
 		log.Println("problem writing file", werr, eerr)
 	}
 
-	log.Println("finished.", time.Since(start))
+	log.Println("finished.", len(results), "Results.", time.Since(start))
 }
 
 func writeResults(filename string, results []data.Result, filter func(r data.Result) bool) error {
