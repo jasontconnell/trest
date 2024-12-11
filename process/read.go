@@ -24,7 +24,7 @@ func ReadTests(filename string) (*data.Group, error) {
 	}
 
 	g, err := parseFile(lines)
-	return g, nil
+	return g, err
 }
 
 var spaces = regexp.MustCompile("^( +)(.+)$")

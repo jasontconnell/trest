@@ -165,7 +165,7 @@ func getMethod(s *data.Group, root *data.Group) string {
 
 func getHeaders(s *data.Group, root *data.Group) []data.Variable {
 	headers := s.Headers
-	if headers == nil || len(headers) == 0 {
+	if len(headers) == 0 {
 		headers = root.Headers
 	}
 	return headers

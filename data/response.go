@@ -86,11 +86,6 @@ func mergeResponses(r Response, res Response) {
 }
 
 func extractValue(m map[string]interface{}, prop string) string {
-	keys := []string{}
-	for k := range m {
-		keys = append(keys, k)
-	}
-
 	if prop == "@index" {
 		log.Println("getting @index", m)
 	}
