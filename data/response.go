@@ -26,7 +26,7 @@ func ParseResponse(reader io.Reader, presp Response) (RawResponse, error) {
 
 func GetResponseValues(resp RawResponse, root string, vars []*Variable, res Response) ([]Response, bool) {
 	var list []Response
-	var elementFound bool
+	elementFound := root == ""
 	for k, v := range resp.Data {
 		if k != root {
 			continue

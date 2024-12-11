@@ -22,7 +22,10 @@ func parseUrl(line string) data.Request {
 
 func parseName(line string) string {
 	parts := strings.Fields(line)
-	return parts[0]
+	if len(parts) != 0 {
+		return parts[0]
+	}
+	return ""
 }
 
 func parseElement(line string) string {
