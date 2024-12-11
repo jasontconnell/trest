@@ -1,3 +1,6 @@
 *.exe
 *.ps1
 tests/
+errors.txt
+out.txt
+*.trst
